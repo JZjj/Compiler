@@ -1,5 +1,3 @@
-## Visualization Demo
+## Visualization
 
-Interactive animation:
-
-[Click here to view the animation](./scish_animation.html)
+[Open Interactive Animation](https://JZjj.github.io/Compiler/scish_animation.html)
