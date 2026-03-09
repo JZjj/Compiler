@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scish Compiler Animation</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 { color: #569cd6; }
+        #controls {
+            margin-bottom: 20px;
+        }
+        button {
+            background-color: #0e639c;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 4px;
+            margin: 0 10px;
+        }
+        button:hover { background-color: #1177bb; }
+        button:disabled { background-color: #4d4d4d; cursor: not-allowed; }
+        
+        #animation-container {
+            display: flex;
+            width: 100%;
+            max-width: 1000px;
+            height: 500px;
+            background-color: #252526;
+            border: 1px solid #333;
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .panel {
+            flex: 1;
+            padding: 20px;
+            border-right: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+        }
+        .panel h2 {
+            font-size: 18px;
+            margin-top: 0;
+            color: #4ec9b0;
+            text-align: center;
+        }
+
+        .code-block {
+            font-family: "Consolas", "Courier New", monospace;
+            background-color: #1e1e1e;
+            padding: 10px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .highlight {
+            background-color: #264f78;
+            border-radius: 2px;
+        }
+
+        /* Memory blocks */
+        .memory-block {
+            border: 2px solid #ce9178;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            background-color: #2d2d2d;
+            transition: all 0.5s ease;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        .memory-block.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .memory-header {
+            background-color: #ce9178;
+            color: #1e1e1e;
+            padding: 5px 10px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .memory-row {
+            display: flex;
+            border-top: 1px solid #444;
+        }
+        .memory-offset {
+            padding: 5px 10px;
+            border-right: 1px solid #444;
+            color: #858585;
+            width: 40px;
+        }
+        .memory-value {
+            padding: 5px 10px;
+            flex: 1;
+            font-family: "Consolas", monospace;
+            color: #b5cea8;
+        }
+
+        #explanation {
+            height: 100px;
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #252526;
+            border-left: 4px solid #0e639c;
+            width: 100%;
+            max-width: 970px;
+            font-size: 16px;
+            line-height: 1.4;
+        }
+
+        .arrow {
+            position: absolute;
+            width: 2px;
+            background-color: #c586c0;
+            transition: all 0.5s ease;
+            opacity: 0;
+        }
+        .arrow::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: -4px;
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 5px solid #c586c0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Scish Compilation & Execution Animation</h1>
+    <p>Visualizing the compilation and runtime environment of: <code>let x = 5 in x + 3</code></p>
+    
+    <div id="controls">
+        <button id="prevBtn" onclick="prevStep()" disabled>Previous</button>
+        <button id="nextBtn" onclick="nextStep()">Next Step</button>
+    </div>
+
+    <div id="animation-container">
+        <div class="panel">
+            <h2>Scish AST</h2>
+            <div class="code-block" id="scish-ast">
+App(
+  Lambda("x", 
+    PrimApp(Plus, [
+      Var("x"), 
+      Int(3)
+    ])
+  ),
+  Int(5)
+)</div>
+        </div>
+        
+        <div class="panel">
+            <h2>Generated Cish (Conceptual)</h2>
+            <div class="code-block" id="cish-code">
+// Waiting to compile...</div>
+        </div>
+
+        <div class="panel" style="flex: 1.5;">
+            <h2>Runtime Heap (Memory)</h2>
+            <div id="heap-container">
+                <!-- Memory blocks will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <div id="explanation">
+        Click "Next Step" to begin the animation.
+    </div>
+
+    <script>
+        const steps = [
+            {
+                scishHighlight: [0, 9],
+                cish: "// Starting compilation of App(Lambda, Int)",
+                heap: "",
+                explanation: "We start compiling the application. In Scish, 'let x = 5 in x + 3' is represented as a function application: an anonymous function taking 'x' applied to the argument 5."
+            },
+            {
+                scishHighlight: [8, 8],
+                cish: "let v1 = 5; // Compiled Int(5)",
+                heap: "",
+                explanation: "First, we compile the argument: Int(5). This simply becomes a Cish integer 5, stored in a temporary variable (e.g., v1)."
+            },
+            {
+                scishHighlight: [1, 7],
+                cish: "let v1 = 5;\n\n// Compiling Lambda\nfn func0(dynenv) {\n  // body...\n}",
+                heap: "",
+                explanation: "Next, we compile the Lambda. The compiler generates a new Cish function (func0) that takes a single argument: 'dynenv' (the dynamic environment pointer)."
+            },
+            {
+                scishHighlight: [1, 7],
+                cish: "let v1 = 5;\n\nlet closure1 = malloc(8);\nstore(closure1, func0);\nstore(closure1 + 4, dynenv);",
+                heap: `
+                    <div class="memory-block visible" id="mem-closure">
+                        <div class="memory-header">Closure (closure1)</div>
+                        <div class="memory-row"><div class="memory-offset">0</div><div class="memory-value">&func0</div></div>
+                        <div class="memory-row"><div class="memory-offset">4</div><div class="memory-value">parent_env (0)</div></div>
+                    </div>
+                `,
+                explanation: "To represent the Lambda at runtime, we allocate an 8-byte closure. Offset 0 stores the function pointer. Offset 4 stores the current environment (which is 0/null here)."
+            },
+            {
+                scishHighlight: [0, 9],
+                cish: "let v1 = 5;\nlet closure1 = malloc(8); ...\n\n// Compiling App\nlet n1 = malloc(8);\nstore(n1, v1); // arg\nstore(n1 + 4, load(closure1 + 4));",
+                heap: `
+                    <div class="memory-block visible" id="mem-closure">
+                        <div class="memory-header">Closure (closure1)</div>
+                        <div class="memory-row"><div class="memory-offset">0</div><div class="memory-value">&func0</div></div>
+                        <div class="memory-row"><div class="memory-offset">4</div><div class="memory-value">parent_env (0)</div></div>
+                    </div>
+                    <div class="memory-block visible" id="mem-env">
+                        <div class="memory-header">New Env (n1)</div>
+                        <div class="memory-row"><div class="memory-offset">0</div><div class="memory-value">5 (v1)</div></div>
+                        <div class="memory-row"><div class="memory-offset">4</div><div class="memory-value">parent_env (0)</div></div>
+                    </div>
+                `,
+                explanation: "Now we compile the Application. We allocate a new 8-byte environment block (n1). We store the argument (5) at offset 0, and copy the parent environment from the closure into offset 4."
+            },
+            {
+                scishHighlight: [0, 9],
+                cish: "...\nlet func_ptr = load(closure1);\nlet n2 = call(func_ptr, n1);",
+                heap: `
+                    <div class="memory-block visible" id="mem-closure">
+                        <div class="memory-header">Closure (closure1)</div>
+                        <div class="memory-row"><div class="memory-offset">0</div><div class="memory-value" style="color: #569cd6; font-weight: bold;">&func0</div></div>
+                        <div class="memory-row"><div class="memory-offset">4</div><div class="memory-value">parent_env (0)</div></div>
+                    </div>
+                    <div class="memory-block visible" id="mem-env" style="border-color: #569cd6;">
+                        <div class="memory-header" style="background-color: #569cd6; color: white;">New Env (n1) -> Passed as dynenv</div>
+                        <div class="memory-row"><div class="memory-offset">0</div><div class="memory-value">5 (v1)</div></div>
+                        <div class="memory-row"><div class="memory-offset">4</div><div class="memory-value">parent_env (0)</div></div>
+                    </div>
+                `,
+                explanation: "We load the function pointer from the closure and call it, passing our newly created environment (n1) as the 'dynenv' argument."
+            },
+            {
+                scishHighlight: [3, 3],
+                cish: "fn func0(dynenv) {\n  // Var(\"x\")\n  let var_x = load(dynenv + 0);\n  ...\n}",
+                heap: `
+                    <div class="memory-block visible" id="mem-env">
+                        <div class="memory-header">dynenv (was n1)</div>
+                        <div class="memory-row"><div class="memory-offset">0</div><div class="memory-value" style="color: #dcdcaa; font-weight: bold;">5 (v1)</div></div>
+                        <div class="memory-row"><div class="memory-offset">4</div><div class="memory-value">parent_env (0)</div></div>
+                    </div>
+                `,
+                explanation: "Inside func0, we evaluate Var('x'). The compiler knows 'x' is at depth 0 in the environment list. So it generates code to load offset 0 from the current dynenv. It retrieves the value 5!"
+            },
+            {
+                scishHighlight: [2, 5],
+                cish: "fn func0(dynenv) {\n  let var_x = load(dynenv + 0);\n  let v_const = 3;\n  return var_x + v_const;\n}",
+                heap: `
+                    <div class="memory-block visible" id="mem-env">
+                        <div class="memory-header">dynenv</div>
+                        <div class="memory-row"><div class="memory-offset">0</div><div class="memory-value">5 (v1)</div></div>
+                        <div class="memory-row"><div class="memory-offset">4</div><div class="memory-value">parent_env (0)</div></div>
+                    </div>
+                `,
+                explanation: "Finally, it compiles the PrimApp(Plus). It adds the retrieved value of 'x' (5) and the constant Int(3), returning 8. The function call completes, and the expression is fully evaluated!"
+            }
+        ];
+
+        let currentStep = 0;
+
+        function updateUI() {
+            const step = steps[currentStep];
+            
+            // Update Cish code
+            document.getElementById('cish-code').innerText = step.cish;
+            
+            // Update Heap
+            document.getElementById('heap-container').innerHTML = step.heap;
+            
+            // Update Explanation
+            document.getElementById('explanation').innerText = `Step ${currentStep + 1}/${steps.length}: ${step.explanation}`;
+
+            // Update buttons
+            document.getElementById('prevBtn').disabled = currentStep === 0;
+            document.getElementById('nextBtn').disabled = currentStep === steps.length - 1;
+        }
+
+        function nextStep() {
+            if (currentStep < steps.length - 1) {
+                currentStep++;
+                updateUI();
+            }
+        }
+
+        function prevStep() {
+            if (currentStep > 0) {
+                currentStep--;
+                updateUI();
+            }
+        }
+
+        // Initialize
+        updateUI();
+    </script>
+</body>
+</html>
